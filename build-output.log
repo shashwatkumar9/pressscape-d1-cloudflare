@@ -1,0 +1,15 @@
+
+> pressscape-d1@0.1.0 pages:build
+> npx @cloudflare/next-on-pages
+
+⚡️ @cloudflare/next-on-pages CLI v.1.13.16
+⚡️ Detected Package Manager: npm (10.9.4)
+⚡️ Preparing project...
+⚡️ Project is ready
+⚡️ Building project...
+▲  Vercel CLI 37.14.0
+▲  Error: EPERM: operation not permitted, unlink '/sessions/busy-blissful-mccarthy/mnt/Desktop/PressScape D1/.vercel/output/config.json'
+
+⚡️ The Vercel build (`npx vercel build`) command failed. For more details see the Vercel logs above.
+⚡️ If you need help solving the issue, refer to the Vercel or Next.js documentation or their repositories.
+

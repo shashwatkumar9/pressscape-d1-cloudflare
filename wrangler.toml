@@ -1,0 +1,36 @@
+name = "pressscape-d1"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# D1 Database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "pressscape-db"
+database_id = "4d6322eb-4926-482b-a01b-11fc45784c3f" # Will be filled after creating the database
+
+# Environment variables
+[vars]
+NODE_ENV = "production"
+
+# KV namespaces (if needed for caching)
+# [[kv_namespaces]]
+# binding = "CACHE"
+# id = ""
+
+# Pages project configuration
+pages_build_output_dir = ".vercel/output/static"
+
+[build]
+command = "npm run build"
+
+[site]
+bucket = ".vercel/output/static"
+
+# Development settings
+[env.development]
+vars = { NODE_ENV = "development" }
+
+# Production settings
+[env.production]
+vars = { NODE_ENV = "production" }
