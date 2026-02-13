@@ -1,4 +1,5 @@
-export const runtime = "edge";
+// NOTE: This route uses bcrypt which requires Node.js
+// export const runtime = "edge";
 
 import { NextRequest, NextResponse } from 'next/server';
 import { sql, generateId, boolToInt, intToBool } from '@/lib/db';

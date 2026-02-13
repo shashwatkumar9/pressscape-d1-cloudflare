@@ -1,7 +1,6 @@
 import { sql } from '@/lib/db';
 import { cookies } from 'next/headers';
 import { cache } from 'react';
-import crypto from 'crypto';
 
 // Types
 interface AdminSession {
@@ -53,9 +52,14 @@ export const ROLE_PERMISSIONS: Record<AdminRole, string[]> = {
     editor: ['blog:own'],
 };
 
-// Generate session ID
+// Generate session ID using Web Crypto API
 function generateSessionId(): string {
-    return crypto.randomBytes(32).toString('base64url');
+    const array = new Uint8Array(32);
+    crypto.getRandomValues(array);
+    return btoa(String.fromCharCode(...array))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '');
 }
 
 // Validate admin session

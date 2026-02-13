@@ -1,11 +1,9 @@
-import { randomUUID } from 'crypto';
-
 // Type for D1 Database binding
 export type D1Database = any; // Will be properly typed by Cloudflare Workers
 
-// Helper function to generate UUIDs
+// Helper function to generate UUIDs using Web Crypto API
 export function generateId(): string {
-    return randomUUID();
+    return crypto.randomUUID();
 }
 
 // Helper to convert boolean to SQLite integer

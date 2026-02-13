@@ -1,4 +1,5 @@
-export const runtime = "edge";
+// NOTE: This route uses PayPal SDK which requires Node.js
+// export const runtime = "edge"; // Disabled - PayPal SDK requires Node.js
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createPayPalOrder } from '@/lib/paypal';

@@ -1,10 +1,10 @@
-import crypto from 'crypto';
-
 /**
- * Generate a unique verification token
+ * Generate a unique verification token using Web Crypto API
  */
 export function generateVerificationToken(): string {
-    return crypto.randomBytes(32).toString('hex');
+    const array = new Uint8Array(32);
+    crypto.getRandomValues(array);
+    return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
 /**

@@ -1,4 +1,5 @@
-export const runtime = "edge";
+// NOTE: This route uses Node.js dns module
+// export const runtime = "edge"; // Disabled - requires Node.js for DNS operations
 
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';

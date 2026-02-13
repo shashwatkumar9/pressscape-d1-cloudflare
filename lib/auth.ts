@@ -2,7 +2,6 @@ import { Lucia } from 'lucia';
 import { sql, intToBool } from '@/lib/db';
 import { cookies } from 'next/headers';
 import { cache } from 'react';
-import crypto from 'crypto';
 
 // Types
 interface Session {
@@ -29,9 +28,14 @@ interface ValidateResult {
 const SESSION_COOKIE_NAME = 'auth_session';
 const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
-// Generate session ID
+// Generate session ID using Web Crypto API
 function generateSessionId(): string {
-    return crypto.randomBytes(32).toString('base64url');
+    const array = new Uint8Array(32);
+    crypto.getRandomValues(array);
+    return btoa(String.fromCharCode(...array))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '');
 }
 
 // Validate session directly without Lucia

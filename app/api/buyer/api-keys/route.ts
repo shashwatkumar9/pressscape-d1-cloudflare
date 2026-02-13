@@ -1,4 +1,5 @@
-export const runtime = "edge";
+// NOTE: This route uses api-auth which depends on bcrypt (Node.js)
+// export const runtime = "edge";
 
 import { NextRequest, NextResponse } from 'next/server';
 import { validateRequest } from '@/lib/auth';

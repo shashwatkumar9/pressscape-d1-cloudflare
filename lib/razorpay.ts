@@ -1,5 +1,4 @@
 import Razorpay from 'razorpay';
-import crypto from 'crypto';
 
 // Initialize Razorpay instance
 export function getRazorpayInstance() {
@@ -37,18 +36,36 @@ export async function createRazorpayOrder(amount: number, currency: string = 'IN
     }
 }
 
-// Verify Razorpay Payment Signature
-export function verifyRazorpaySignature(
+// Verify Razorpay Payment Signature using Web Crypto API
+export async function verifyRazorpaySignature(
     orderId: string,
     paymentId: string,
     signature: string
-): boolean {
+): Promise<boolean> {
     const keySecret = process.env.RAZORPAY_KEY_SECRET || '';
 
-    const generatedSignature = crypto
-        .createHmac('sha256', keySecret)
-        .update(`${orderId}|${paymentId}`)
-        .digest('hex');
+    // Import the secret key
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(keySecret);
+    const key = await crypto.subtle.importKey(
+        'raw',
+        keyData,
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+    );
+
+    // Create the message
+    const message = encoder.encode(`${orderId}|${paymentId}`);
+
+    // Sign the message
+    const signatureBuffer = await crypto.subtle.sign('HMAC', key, message);
+
+    // Convert to hex
+    const signatureArray = Array.from(new Uint8Array(signatureBuffer));
+    const generatedSignature = signatureArray
+        .map(byte => byte.toString(16).padStart(2, '0'))
+        .join('');
 
     return generatedSignature === signature;
 }

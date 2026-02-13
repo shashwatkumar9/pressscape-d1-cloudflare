@@ -5,7 +5,6 @@
 
 import { sql } from './db';
 import * as bcrypt from 'bcrypt';
-import * as crypto from 'crypto';
 
 // Types
 export interface ApiKey {
@@ -42,9 +41,14 @@ export async function generateApiKey(
     permissions: string[] = ['read']
 ): Promise<{ rawKey: string; apiKey: ApiKey } | { error: string }> {
     try {
-        // Generate a secure random key
-        const randomBytes = crypto.randomBytes(32);
-        const rawKey = `ps_${randomBytes.toString('base64url')}`;
+        // Generate a secure random key using Web Crypto API
+        const array = new Uint8Array(32);
+        crypto.getRandomValues(array);
+        const base64url = btoa(String.fromCharCode(...array))
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=/g, '');
+        const rawKey = `ps_${base64url}`;
 
         // Create prefix for identification (first 12 chars after ps_)
         const prefix = rawKey.substring(0, 15);

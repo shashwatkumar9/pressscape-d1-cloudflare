@@ -1,4 +1,5 @@
-export const runtime = "edge";
+// NOTE: This route uses Razorpay SDK (getRazorpayPayment) which requires Node.js
+// export const runtime = "edge"; // Disabled - Razorpay SDK requires Node.js
 
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyRazorpaySignature, getRazorpayPayment } from '@/lib/razorpay';
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
         const { razorpayOrderId, razorpayPaymentId, razorpaySignature, orderId } = result.data;
 
         // Verify signature
-        const isValid = verifyRazorpaySignature(
+        const isValid = await verifyRazorpaySignature(
             razorpayOrderId,
             razorpayPaymentId,
             razorpaySignature
