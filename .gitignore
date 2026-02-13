@@ -53,3 +53,4 @@ wrangler.toml.local
 *.sqlite3
 backup.sql
 *.backup
+ New Design Web Template/
