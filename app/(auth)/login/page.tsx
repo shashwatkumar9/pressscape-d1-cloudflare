@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useActionState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -8,47 +8,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { loginAction } from '@/app/actions/auth';
 
 export default function LoginPage() {
     const router = useRouter();
     const [showPassword, setShowPassword] = useState(false);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
-    const [formData, setFormData] = useState({
-        email: '',
-        password: '',
-    });
+    const [state, formAction, isPending] = useActionState(loginAction, null);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        setError('');
-
-        try {
-            const response = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData),
-            });
-
-            const data = await response.json() as any;
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Login failed');
-            }
-
-            // Add a small delay to ensure cookie is set before redirect
-            await new Promise(resolve => setTimeout(resolve, 100));
-
-            // Use window.location for full page reload to ensure cookie is sent
-            // This fixes SameSite cookie issues with client-side navigation
-            window.location.href = '/buyer/dashboard';
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'An error occurred');
-        } finally {
-            setLoading(false);
-        }
-    };
+    // Redirect on success
+    if (state?.success) {
+        window.location.href = '/buyer/dashboard';
+    }
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-violet-50 px-4">
@@ -63,11 +33,11 @@ export default function LoginPage() {
                     <CardDescription>Sign in to your PressScape account</CardDescription>
                 </CardHeader>
 
-                <form onSubmit={handleSubmit}>
+                <form action={formAction}>
                     <CardContent className="space-y-4">
-                        {error && (
+                        {state?.error && (
                             <div className="p-3 rounded-lg bg-red-50 text-red-600 text-sm">
-                                {error}
+                                {state.error}
                             </div>
                         )}
 
@@ -75,11 +45,11 @@ export default function LoginPage() {
                             <Label htmlFor="email">Email</Label>
                             <Input
                                 id="email"
+                                name="email"
                                 type="email"
                                 placeholder="you@example.com"
-                                value={formData.email}
-                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                 required
+                                disabled={isPending}
                             />
                         </div>
 
@@ -88,16 +58,17 @@ export default function LoginPage() {
                             <div className="relative">
                                 <Input
                                     id="password"
+                                    name="password"
                                     type={showPassword ? 'text' : 'password'}
                                     placeholder="••••••••"
-                                    value={formData.password}
-                                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                     required
+                                    disabled={isPending}
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
                                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                    disabled={isPending}
                                 >
                                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                                 </button>
@@ -106,7 +77,7 @@ export default function LoginPage() {
 
                         <div className="flex items-center justify-between text-sm">
                             <label className="flex items-center gap-2">
-                                <input type="checkbox" className="rounded border-gray-300" />
+                                <input type="checkbox" className="rounded border-gray-300" disabled={isPending} />
                                 <span className="text-gray-600">Remember me</span>
                             </label>
                             <Link href="/forgot-password" className="text-violet-600 hover:underline">
@@ -116,8 +87,8 @@ export default function LoginPage() {
                     </CardContent>
 
                     <CardFooter className="flex flex-col gap-4">
-                        <Button type="submit" className="w-full" disabled={loading}>
-                            {loading ? (
+                        <Button type="submit" className="w-full" disabled={isPending}>
+                            {isPending ? (
                                 <>
                                     <Loader2 className="w-4 h-4 animate-spin" />
                                     Signing in...
