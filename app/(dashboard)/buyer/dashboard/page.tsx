@@ -44,15 +44,15 @@ async function getDashboardData(userId: string) {
     // Initialize database
     await initializeDatabaseFromContext();
 
-    // Order stats by status
+    // Order stats by status (using CASE for D1 compatibility)
     const orderStatsResult = await sql`
-        SELECT 
-            COUNT(*) FILTER (WHERE status = 'pending') as not_started,
-            COUNT(*) FILTER (WHERE status IN ('accepted', 'writing')) as in_progress,
-            COUNT(*) FILTER (WHERE status = 'content_submitted') as pending_approval,
-            COUNT(*) FILTER (WHERE status = 'revision_needed') as in_improvement,
-            COUNT(*) FILTER (WHERE status IN ('approved', 'published', 'completed')) as completed,
-            COUNT(*) FILTER (WHERE status IN ('cancelled', 'refunded', 'disputed')) as rejected,
+        SELECT
+            SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as not_started,
+            SUM(CASE WHEN status IN ('accepted', 'writing') THEN 1 ELSE 0 END) as in_progress,
+            SUM(CASE WHEN status = 'content_submitted' THEN 1 ELSE 0 END) as pending_approval,
+            SUM(CASE WHEN status = 'revision_needed' THEN 1 ELSE 0 END) as in_improvement,
+            SUM(CASE WHEN status IN ('approved', 'published', 'completed') THEN 1 ELSE 0 END) as completed,
+            SUM(CASE WHEN status IN ('cancelled', 'refunded', 'disputed') THEN 1 ELSE 0 END) as rejected,
             COUNT(*) as total_orders,
             COALESCE(SUM(total_amount), 0) as total_spent
         FROM orders
