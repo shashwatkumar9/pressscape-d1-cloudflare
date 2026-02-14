@@ -9,6 +9,20 @@ import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 
+interface LoginResponse {
+    success?: boolean;
+    token?: string;
+    user?: {
+        id: string;
+        email: string;
+        name: string;
+        isBuyer: boolean;
+        isPublisher: boolean;
+        isAffiliate: boolean;
+    };
+    error?: string;
+}
+
 export default function LoginPage() {
     const router = useRouter();
     const [showPassword, setShowPassword] = useState(false);
@@ -31,7 +45,7 @@ export default function LoginPage() {
                 body: JSON.stringify({ email, password }),
             });
 
-            const data = await response.json();
+            const data = await response.json() as LoginResponse;
 
             if (response.ok && data.success && data.token) {
                 // Store JWT in cookie (client-side)
