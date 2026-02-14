@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 import { redirect } from 'next/navigation';
 
 export default function BuyerConversationPage({ params }: { params: Promise<{ id: string }> }) {

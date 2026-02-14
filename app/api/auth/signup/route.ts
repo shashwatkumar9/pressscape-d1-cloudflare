@@ -1,10 +1,9 @@
-// NOTE: This route uses bcrypt which requires Node.js
-// export const runtime = "edge";
+export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { sql, generateId, boolToInt, intToBool } from '@/lib/db';
 import { initializeDatabaseFromContext } from '@/lib/cloudflare';
-import bcrypt from 'bcrypt';
+import { hashPassword, verifyPassword } from '@/lib/password';
 import { createSession } from '@/lib/auth';
 import { sendWelcomeEmail } from '@/lib/email';
 import { z } from 'zod';
@@ -52,7 +51,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Hash password
-        const passwordHash = await bcrypt.hash(password, 10);
+        const passwordHash = await hashPassword(password);
 
         // Generate affiliate code if affiliate role selected
         const affiliateCode = roles.affiliate ? generateAffiliateCode(name) : null;

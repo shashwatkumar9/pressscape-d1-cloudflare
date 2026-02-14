@@ -4,7 +4,7 @@
  */
 
 import { sql } from './db';
-import * as bcrypt from 'bcrypt';
+import { hashPassword, verifyPassword } from './password';
 
 // Types
 export interface ApiKey {
@@ -54,7 +54,7 @@ export async function generateApiKey(
         const prefix = rawKey.substring(0, 15);
 
         // Hash the key for storage
-        const keyHash = await bcrypt.hash(rawKey, 10);
+        const keyHash = await hashPassword(rawKey);
 
         // Insert into database
         const result = await sql`
@@ -139,7 +139,7 @@ export async function validateApiKey(rawKey: string): Promise<ApiKeyValidation> 
             user_name: string;
             is_buyer: boolean;
         }>) {
-            const isValid = await bcrypt.compare(rawKey, row.key_hash);
+            const isValid = await verifyPassword(rawKey, row.key_hash);
 
             if (isValid) {
                 // Update last used timestamp

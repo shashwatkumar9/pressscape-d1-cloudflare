@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 // NOTE: This route uses Razorpay SDK which requires Node.js
 // export const runtime = "edge";
 

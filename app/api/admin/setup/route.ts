@@ -1,10 +1,9 @@
-// NOTE: This route uses bcrypt which requires Node.js
-// export const runtime = "edge";
+export const runtime = 'edge';
 
 import { NextResponse } from 'next/server';
 import { sql , generateId } from '@/lib/db';
 import { initializeDatabaseFromContext } from '@/lib/cloudflare';
-import bcrypt from 'bcrypt';
+import { hashPassword, verifyPassword } from '@/lib/password';
 
 
 
@@ -21,7 +20,7 @@ export async function POST() {
         const role = 'super_admin';
 
         // Hash the password
-        const passwordHash = await bcrypt.hash(password, 10);
+        const passwordHash = await hashPassword(password);
 
         // Check if admin_users table exists
         const tableCheck = await sql`

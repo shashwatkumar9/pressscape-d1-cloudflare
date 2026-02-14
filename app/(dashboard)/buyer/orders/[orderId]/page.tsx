@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 import { sql } from '@/lib/db';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';

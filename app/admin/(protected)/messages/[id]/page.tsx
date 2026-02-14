@@ -1,4 +1,5 @@
-export const runtime = "edge";
+export const runtime = 'edge';
+
 
 import { sql } from '@/lib/db';
 import { getAdminSession } from '@/lib/admin-auth';

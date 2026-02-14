@@ -1,10 +1,9 @@
-// NOTE: This route uses bcrypt which requires Node.js
-// export const runtime = "edge";
+export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { initializeDatabaseFromContext } from '@/lib/cloudflare';
-import bcrypt from 'bcrypt';
+import { verifyPassword } from '@/lib/password';
 import { createSession } from '@/lib/auth';
 import { z } from 'zod';
 
@@ -67,7 +66,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Verify password
-        const validPassword = await bcrypt.compare(password, user.password_hash as string);
+        const validPassword = await verifyPassword(password, user.password_hash as string);
         if (!validPassword) {
             return NextResponse.json(
                 { error: 'Invalid email or password' },

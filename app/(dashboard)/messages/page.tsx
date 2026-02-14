@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 import { sql } from '@/lib/db';
 import { validateRequest } from '@/lib/auth';
 import Link from 'next/link';

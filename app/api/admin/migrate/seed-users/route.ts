@@ -1,10 +1,9 @@
-// NOTE: This route uses bcrypt which requires Node.js
-// export const runtime = "edge";
+export const runtime = 'edge';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { initializeDatabaseFromContext } from '@/lib/cloudflare';
-import bcrypt from 'bcrypt';
+import { hashPassword, verifyPassword } from '@/lib/password';
 
 
 
@@ -14,7 +13,7 @@ export async function POST(request: NextRequest) {
         // Initialize D1 database
         await initializeDatabaseFromContext();
 
-        const passwordHash = await bcrypt.hash('Test@123', 10);
+        const passwordHash = await hashPassword('Test@123');
 
         // Create test users for each role
         const testUsers = [

@@ -1,10 +1,9 @@
-// NOTE: This route uses bcrypt which requires Node.js
-// export const runtime = "edge";
+export const runtime = 'edge';
 
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { initializeDatabaseFromContext } from '@/lib/cloudflare';
-import bcrypt from 'bcrypt';
+import { hashPassword, verifyPassword } from '@/lib/password';
 
 
 
@@ -20,7 +19,7 @@ export async function GET() {
         const name = 'Test Buyer';
 
         // Hash the password
-        const passwordHash = await bcrypt.hash(password, 10);
+        const passwordHash = await hashPassword(password);
 
         // Check if buyer already exists
         const checkResult = await sql`SELECT id FROM users WHERE email = ${email}`;

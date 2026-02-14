@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 import { redirect } from 'next/navigation';
 import { validateRequest } from '@/lib/auth';
 import { sql } from '@/lib/db';
