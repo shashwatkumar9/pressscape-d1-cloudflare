@@ -21,30 +21,17 @@ function base64UrlDecode(data: string): string {
     return atob(base64);
 }
 
-// Generate JWT secret key from Cloudflare environment
+// Generate JWT secret key from environment variable
 async function getSecretKey(): Promise<CryptoKey> {
-    let secret: string | undefined;
+    // Environment variables set in Cloudflare Pages are available via process.env
+    const secret = process.env.JWT_SECRET;
 
-    // Try to get from Cloudflare context first
-    try {
-        const { getCloudflareContext } = await import('@/lib/cloudflare');
-        const context = await getCloudflareContext();
-        if (context?.env?.JWT_SECRET) {
-            secret = context.env.JWT_SECRET;
-            console.log('[JWT] Using JWT_SECRET from Cloudflare context');
-        }
-    } catch (error) {
-        console.log('[JWT] Cloudflare context not available, trying process.env');
-    }
-
-    // Fallback to process.env for development
-    if (!secret) {
-        secret = process.env.JWT_SECRET;
-        console.log('[JWT] Using JWT_SECRET from process.env:', !!secret);
-    }
+    console.log('[JWT] JWT_SECRET exists:', !!secret);
+    console.log('[JWT] JWT_SECRET length:', secret?.length || 0);
 
     if (!secret) {
-        console.error('[JWT] JWT_SECRET not found in Cloudflare context or process.env!');
+        console.error('[JWT] JWT_SECRET environment variable is not set!');
+        console.error('[JWT] Available env keys:', Object.keys(process.env).filter(k => k.includes('JWT') || k.includes('SECRET')));
         throw new Error('JWT_SECRET environment variable is not set');
     }
 
