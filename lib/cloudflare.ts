@@ -1,6 +1,7 @@
 // Cloudflare bindings and environment types
 export interface CloudflareEnv {
     DB: D1Database;
+    JWT_SECRET: string;
     // Add other Cloudflare bindings here
     // KV: KVNamespace;
     // R2: R2Bucket;
