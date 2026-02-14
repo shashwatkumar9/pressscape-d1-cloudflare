@@ -160,16 +160,24 @@ const statusColors: Record<string, string> = {
 };
 
 export default async function BuyerDashboard() {
-    const { user } = await validateRequest();
+    try {
+        console.log('[Dashboard] Starting dashboard render');
+        const { user } = await validateRequest();
+        console.log('[Dashboard] User validated:', user?.email);
 
-    if (!user) {
-        redirect('/login');
-    }
+        if (!user) {
+            console.log('[Dashboard] No user, redirecting to login');
+            redirect('/login');
+        }
 
-    const data = await getDashboardData(user.id);
-    const userName = user.name?.split(' ')[0] || 'there';
+        console.log('[Dashboard] Fetching dashboard data for user:', user.id);
+        const data = await getDashboardData(user.id);
+        console.log('[Dashboard] Dashboard data fetched successfully');
 
-    return (
+        const userName = user.name?.split(' ')[0] || 'there';
+
+        console.log('[Dashboard] Rendering dashboard UI');
+        return (
         <div className="space-y-6">
             {/* Promotional Banner */}
             <DepositBonusBanner />
@@ -335,4 +343,10 @@ export default async function BuyerDashboard() {
             </Card>
         </div>
     );
+    } catch (error) {
+        console.error('[Dashboard] Fatal error in BuyerDashboard:', error);
+        console.error('[Dashboard] Error details:', error instanceof Error ? error.message : String(error));
+        console.error('[Dashboard] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+        throw error;
+    }
 }
