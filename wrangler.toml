@@ -8,5 +8,10 @@ binding = "DB"
 database_name = "pressscape-db"
 database_id = "4d6322eb-4926-482b-a01b-11fc45784c3f"
 
+# R2 Bucket Binding
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "pressscape-uploads"
+
 # Pages configuration
 pages_build_output_dir = ".vercel/output/static"
