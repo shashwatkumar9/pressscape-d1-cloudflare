@@ -70,6 +70,7 @@ export default function MarketplacePage() {
     const [sort, setSort] = useState('relevance');
     const [total, setTotal] = useState(0);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [checkingAuth, setCheckingAuth] = useState(true);
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [filters, setFilters] = useState<FiltersState>(defaultFilters);
     const [favorites, setFavorites] = useState<Set<string>>(new Set());
@@ -89,12 +90,23 @@ export default function MarketplacePage() {
         return !!value;
     }).length;
 
-    // Check auth status
+    // Check auth status - redirect to login if not authenticated
     useEffect(() => {
         fetch('/api/auth/check')
             .then(res => res.json() as any)
-            .then((data: any) => setIsAuthenticated(data.isAuthenticated))
-            .catch(() => setIsAuthenticated(false));
+            .then((data: any) => {
+                if (!data.isAuthenticated) {
+                    // Redirect to login with return URL
+                    window.location.href = `/login?redirect=/marketplace`;
+                } else {
+                    setIsAuthenticated(true);
+                    setCheckingAuth(false);
+                }
+            })
+            .catch(() => {
+                // On error, redirect to login
+                window.location.href = `/login?redirect=/marketplace`;
+            });
     }, []);
 
     // Load favorites from API
@@ -301,6 +313,18 @@ export default function MarketplacePage() {
     const handleClearFilters = () => {
         setFilters(defaultFilters);
     };
+
+    // Show loading screen while checking authentication
+    if (checkingAuth) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center">
+                    <Loader2 className="w-12 h-12 animate-spin text-violet-600 mx-auto mb-4" />
+                    <p className="text-gray-600">Checking authentication...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gray-50">
