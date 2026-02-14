@@ -47,12 +47,12 @@ async function getDashboardData(userId: string) {
     // Order stats by status (using CASE for D1 compatibility)
     const orderStatsResult = await sql`
         SELECT
-            SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as not_started,
-            SUM(CASE WHEN status IN ('accepted', 'writing') THEN 1 ELSE 0 END) as in_progress,
-            SUM(CASE WHEN status = 'content_submitted' THEN 1 ELSE 0 END) as pending_approval,
-            SUM(CASE WHEN status = 'revision_needed' THEN 1 ELSE 0 END) as in_improvement,
-            SUM(CASE WHEN status IN ('approved', 'published', 'completed') THEN 1 ELSE 0 END) as completed,
-            SUM(CASE WHEN status IN ('cancelled', 'refunded', 'disputed') THEN 1 ELSE 0 END) as rejected,
+            COALESCE(SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END), 0) as not_started,
+            COALESCE(SUM(CASE WHEN status IN ('accepted', 'writing') THEN 1 ELSE 0 END), 0) as in_progress,
+            COALESCE(SUM(CASE WHEN status = 'content_submitted' THEN 1 ELSE 0 END), 0) as pending_approval,
+            COALESCE(SUM(CASE WHEN status = 'revision_needed' THEN 1 ELSE 0 END), 0) as in_improvement,
+            COALESCE(SUM(CASE WHEN status IN ('approved', 'published', 'completed') THEN 1 ELSE 0 END), 0) as completed,
+            COALESCE(SUM(CASE WHEN status IN ('cancelled', 'refunded', 'disputed') THEN 1 ELSE 0 END), 0) as rejected,
             COUNT(*) as total_orders,
             COALESCE(SUM(total_amount), 0) as total_spent
         FROM orders
