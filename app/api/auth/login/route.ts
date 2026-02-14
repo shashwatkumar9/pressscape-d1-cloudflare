@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { initializeDatabaseFromContext } from '@/lib/cloudflare';
 import { verifyPassword } from '@/lib/password';
+import { createToken } from '@/lib/jwt';
 import { z } from 'zod';
 
 
@@ -81,36 +82,21 @@ export async function POST(request: NextRequest) {
         // Update last login
         await sql`UPDATE users SET last_login_at = ${now} WHERE id = ${user.id as string}`;
 
-        // Create session manually for Edge runtime compatibility
-        const SESSION_COOKIE_NAME = 'auth_session';
-        const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+        // Create JWT token
+        console.log('[Login API] Creating JWT token for user:', user.id);
+        const token = await createToken(
+            user.id as string,
+            user.email as string,
+            user.name as string
+        );
 
-        // Generate session ID
-        const array = new Uint8Array(32);
-        crypto.getRandomValues(array);
-        const sessionId = btoa(String.fromCharCode(...array))
-            .replace(/\+/g, '-')
-            .replace(/\//g, '_')
-            .replace(/=/g, '');
+        console.log('[Login API] JWT token created successfully');
+        console.log('[Login API] Login successful for user:', email);
 
-        const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
-
-        // Insert session into database
-        console.log('Creating session for user:', user.id);
-        try {
-            await sql`
-                INSERT INTO sessions (id, user_id, expires_at)
-                VALUES (${sessionId}, ${user.id as string}, ${expiresAt.toISOString()})
-            `;
-            console.log('Session created successfully');
-        } catch (sessionError) {
-            console.error('Session creation error:', sessionError);
-            throw sessionError;
-        }
-
-        // Create response with cookie
-        const response = NextResponse.json({
+        // Return token to client
+        return NextResponse.json({
             success: true,
+            token,
             user: {
                 id: user.id,
                 email: user.email,
@@ -120,38 +106,6 @@ export async function POST(request: NextRequest) {
                 isAffiliate: user.is_affiliate,
             },
         });
-
-        // Set cookie directly on response
-        // Use secure: true for production (Cloudflare Pages always uses HTTPS)
-        // Don't set domain - let browser infer it from the request
-        const cookieOptions = {
-            name: SESSION_COOKIE_NAME,
-            value: sessionId,
-            httpOnly: true,
-            secure: true, // Always secure on Cloudflare Pages (HTTPS)
-            sameSite: 'lax' as const,
-            maxAge: 30 * 24 * 60 * 60, // 30 days in seconds
-            path: '/',
-        };
-
-        console.log('Setting session cookie:', {
-            sessionId: sessionId.substring(0, 10) + '...',
-            maxAge: cookieOptions.maxAge,
-            secure: cookieOptions.secure,
-            sameSite: cookieOptions.sameSite,
-            httpOnly: cookieOptions.httpOnly
-        });
-
-        response.cookies.set(cookieOptions);
-
-        // Log the Set-Cookie header to verify it's being sent
-        const setCookieHeader = response.headers.get('set-cookie');
-        console.log('Set-Cookie header:', setCookieHeader);
-
-        console.log('Login successful for user:', user.email);
-        console.log('Session created with ID:', sessionId.substring(0, 10) + '...');
-
-        return response;
     } catch (error) {
         console.error('Login error:', error);
         console.error('Error details:', error instanceof Error ? error.message : String(error));

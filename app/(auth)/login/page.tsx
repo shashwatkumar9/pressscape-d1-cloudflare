@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useState, FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -9,35 +8,44 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
-import { loginAction } from '@/app/actions/auth';
-
-function SubmitButton() {
-    const { pending } = useFormStatus();
-    return (
-        <Button type="submit" className="w-full" disabled={pending}>
-            {pending ? (
-                <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Signing in...
-                </>
-            ) : (
-                'Sign in'
-            )}
-        </Button>
-    );
-}
 
 export default function LoginPage() {
     const router = useRouter();
     const [showPassword, setShowPassword] = useState(false);
-    const [state, formAction] = useFormState(loginAction, null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    // Redirect on success and store JWT token
-    if (state?.success && state?.token) {
-        // Store JWT in cookie (client-side)
-        document.cookie = `auth_token=${state.token}; path=/; max-age=${30 * 24 * 60 * 60}; SameSite=Lax; Secure`;
-        console.log('JWT token stored in cookie');
-        window.location.href = '/buyer/dashboard';
+    async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+        e.preventDefault();
+        setLoading(true);
+        setError(null);
+
+        const formData = new FormData(e.currentTarget);
+        const email = formData.get('email') as string;
+        const password = formData.get('password') as string;
+
+        try {
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success && data.token) {
+                // Store JWT in cookie (client-side)
+                document.cookie = `auth_token=${data.token}; path=/; max-age=${30 * 24 * 60 * 60}; SameSite=Lax; Secure`;
+                console.log('JWT token stored in cookie');
+                window.location.href = '/buyer/dashboard';
+            } else {
+                setError(data.error || 'Login failed');
+                setLoading(false);
+            }
+        } catch (err) {
+            setError('An error occurred during login');
+            setLoading(false);
+        }
     }
 
     return (
@@ -53,11 +61,11 @@ export default function LoginPage() {
                     <CardDescription>Sign in to your PressScape account</CardDescription>
                 </CardHeader>
 
-                <form action={formAction}>
+                <form onSubmit={handleSubmit}>
                     <CardContent className="space-y-4">
-                        {state?.error && (
+                        {error && (
                             <div className="p-3 rounded-lg bg-red-50 text-red-600 text-sm">
-                                {state.error}
+                                {error}
                             </div>
                         )}
 
@@ -104,7 +112,16 @@ export default function LoginPage() {
                     </CardContent>
 
                     <CardFooter className="flex flex-col gap-4">
-                        <SubmitButton />
+                        <Button type="submit" className="w-full" disabled={loading}>
+                            {loading ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Signing in...
+                                </>
+                            ) : (
+                                'Sign in'
+                            )}
+                        </Button>
 
                         <p className="text-center text-sm text-gray-600">
                             Don't have an account?{' '}
