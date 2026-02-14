@@ -62,11 +62,26 @@ export async function POST(request: NextRequest) {
 
         const user = userResult.rows[0] as Record<string, unknown>;
 
+        // Check if a token was created in the last 2 minutes to prevent duplicate emails
+        const recentTokenResult = await sql`
+      SELECT created_at, token
+      FROM password_reset_tokens
+      WHERE user_id = ${user.id as string}
+      AND datetime(created_at) > datetime('now', '-2 minutes')
+    `;
+
+        // If recent token exists, reuse it instead of creating new one
+        if (recentTokenResult.rows.length > 0) {
+            const recentToken = recentTokenResult.rows[0] as Record<string, unknown>;
+            console.log('[Forgot Password] Recent token exists (created:', recentToken.created_at, '), skipping duplicate email for:', email);
+            return NextResponse.json({ success: true });
+        }
+
         // Generate token
         const token = generateRandomToken(32);
         const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-        // Delete any existing tokens for this user
+        // Delete any existing tokens for this user (older than 2 minutes)
         await sql`DELETE FROM password_reset_tokens WHERE user_id = ${user.id as string}`;
 
         // Save token
