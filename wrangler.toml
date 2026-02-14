@@ -1,0 +1,12 @@
+# Cloudflare Pages Configuration
+name = "pressscape-d1-cloudflare"
+compatibility_date = "2024-01-01"
+
+# D1 Database Binding
+[[d1_databases]]
+binding = "DB"
+database_name = "pressscape-db"
+database_id = "4d6322eb-4926-482b-a01b-11fc45784c3f"
+
+# Pages configuration
+pages_build_output_dir = ".vercel/output/static"
