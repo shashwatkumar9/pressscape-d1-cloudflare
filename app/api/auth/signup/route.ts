@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql, generateId, boolToInt, intToBool } from '@/lib/db';
 import { initializeDatabaseFromContext } from '@/lib/cloudflare';
 import { hashPassword, verifyPassword } from '@/lib/password';
-import { createSession } from '@/lib/auth';
+import { createToken } from '@/lib/jwt';
 import { sendWelcomeEmail } from '@/lib/email';
 import { z } from 'zod';
 import { generateAffiliateCode } from '@/lib/utils';
@@ -110,14 +110,19 @@ export async function POST(request: NextRequest) {
       `;
         }
 
-        // Create session
-        await createSession(user.id as string);
+        // Create JWT token
+        const token = await createToken(
+            user.id as string,
+            user.email as string,
+            user.name as string
+        );
 
         // Send welcome email (non-blocking)
         sendWelcomeEmail(user.email as string, user.name as string).catch(console.error);
 
         return NextResponse.json({
             success: true,
+            token,
             user: {
                 id: user.id,
                 email: user.email,
