@@ -1,7 +1,5 @@
 'use server';
 
-export const runtime = 'edge';
-
 import { sql } from '@/lib/db';
 import { initializeDatabaseFromContext } from '@/lib/cloudflare';
 import { verifyPassword } from '@/lib/password';
