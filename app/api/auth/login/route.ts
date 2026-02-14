@@ -65,7 +65,12 @@ export async function POST(request: NextRequest) {
         }
 
         // Verify password
+        console.log('Verifying password for user:', email);
+        console.log('Password hash length:', (user.password_hash as string)?.length);
+
         const validPassword = await verifyPassword(password, user.password_hash as string);
+        console.log('Password verification result:', validPassword);
+
         if (!validPassword) {
             return NextResponse.json(
                 { error: 'Invalid email or password' },
@@ -91,10 +96,17 @@ export async function POST(request: NextRequest) {
         const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
 
         // Insert session into database
-        await sql`
-            INSERT INTO sessions (id, user_id, expires_at)
-            VALUES (${sessionId}, ${user.id as string}, ${expiresAt.toISOString()})
-        `;
+        console.log('Creating session for user:', user.id);
+        try {
+            await sql`
+                INSERT INTO sessions (id, user_id, expires_at)
+                VALUES (${sessionId}, ${user.id as string}, ${expiresAt.toISOString()})
+            `;
+            console.log('Session created successfully');
+        } catch (sessionError) {
+            console.error('Session creation error:', sessionError);
+            throw sessionError;
+        }
 
         // Create response with cookie
         const response = NextResponse.json({
@@ -123,8 +135,13 @@ export async function POST(request: NextRequest) {
         return response;
     } catch (error) {
         console.error('Login error:', error);
+        console.error('Error details:', error instanceof Error ? error.message : String(error));
+        console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
         return NextResponse.json(
-            { error: 'An error occurred during login' },
+            {
+                error: 'An error occurred during login',
+                details: error instanceof Error ? error.message : String(error)
+            },
             { status: 500 }
         );
     }
