@@ -37,6 +37,9 @@ export default function LoginPage() {
                 throw new Error(data.error || 'Login failed');
             }
 
+            // Add a small delay to ensure cookie is set before redirect
+            await new Promise(resolve => setTimeout(resolve, 100));
+
             // Use window.location for full page reload to ensure cookie is sent
             // This fixes SameSite cookie issues with client-side navigation
             window.location.href = '/buyer/dashboard';

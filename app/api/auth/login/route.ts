@@ -123,24 +123,30 @@ export async function POST(request: NextRequest) {
 
         // Set cookie directly on response
         // Use secure: true for production (Cloudflare Pages always uses HTTPS)
+        // Don't set domain - let browser infer it from the request
         const cookieOptions = {
             name: SESSION_COOKIE_NAME,
             value: sessionId,
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production' || true, // Always true in production
+            secure: true, // Always secure on Cloudflare Pages (HTTPS)
             sameSite: 'lax' as const,
-            expires: expiresAt,
+            maxAge: 30 * 24 * 60 * 60, // 30 days in seconds
             path: '/',
         };
 
         console.log('Setting session cookie:', {
             sessionId: sessionId.substring(0, 10) + '...',
-            expires: expiresAt.toISOString(),
+            maxAge: cookieOptions.maxAge,
             secure: cookieOptions.secure,
-            sameSite: cookieOptions.sameSite
+            sameSite: cookieOptions.sameSite,
+            httpOnly: cookieOptions.httpOnly
         });
 
         response.cookies.set(cookieOptions);
+
+        // Log the Set-Cookie header to verify it's being sent
+        const setCookieHeader = response.headers.get('set-cookie');
+        console.log('Set-Cookie header:', setCookieHeader);
 
         console.log('Login successful for user:', user.email);
         console.log('Session created with ID:', sessionId.substring(0, 10) + '...');
