@@ -1,5 +1,4 @@
 // JWT utilities using Web Crypto API for Edge Runtime
-export const runtime = 'edge';
 
 interface JWTPayload {
     userId: string;
