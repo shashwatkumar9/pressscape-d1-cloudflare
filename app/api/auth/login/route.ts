@@ -4,7 +4,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@/lib/db';
 import { initializeDatabaseFromContext } from '@/lib/cloudflare';
 import { verifyPassword } from '@/lib/password';
-import { createSession } from '@/lib/auth';
 import { z } from 'zod';
 
 
@@ -77,10 +76,28 @@ export async function POST(request: NextRequest) {
         // Update last login
         await sql`UPDATE users SET last_login_at = ${now} WHERE id = ${user.id as string}`;
 
-        // Create session
-        await createSession(user.id as string);
+        // Create session manually for Edge runtime compatibility
+        const SESSION_COOKIE_NAME = 'auth_session';
+        const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
-        return NextResponse.json({
+        // Generate session ID
+        const array = new Uint8Array(32);
+        crypto.getRandomValues(array);
+        const sessionId = btoa(String.fromCharCode(...array))
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=/g, '');
+
+        const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
+
+        // Insert session into database
+        await sql`
+            INSERT INTO sessions (id, user_id, expires_at)
+            VALUES (${sessionId}, ${user.id as string}, ${expiresAt.toISOString()})
+        `;
+
+        // Create response with cookie
+        const response = NextResponse.json({
             success: true,
             user: {
                 id: user.id,
@@ -91,6 +108,19 @@ export async function POST(request: NextRequest) {
                 isAffiliate: user.is_affiliate,
             },
         });
+
+        // Set cookie directly on response
+        response.cookies.set({
+            name: SESSION_COOKIE_NAME,
+            value: sessionId,
+            httpOnly: true,
+            secure: true,
+            sameSite: 'lax',
+            expires: expiresAt,
+            path: '/',
+        });
+
+        return response;
     } catch (error) {
         console.error('Login error:', error);
         return NextResponse.json(
