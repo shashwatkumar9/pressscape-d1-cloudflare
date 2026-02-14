@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useActionState } from 'react';
+import { useState } from 'react';
+import { useFormState, useFormStatus } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -10,10 +11,26 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { loginAction } from '@/app/actions/auth';
 
+function SubmitButton() {
+    const { pending } = useFormStatus();
+    return (
+        <Button type="submit" className="w-full" disabled={pending}>
+            {pending ? (
+                <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Signing in...
+                </>
+            ) : (
+                'Sign in'
+            )}
+        </Button>
+    );
+}
+
 export default function LoginPage() {
     const router = useRouter();
     const [showPassword, setShowPassword] = useState(false);
-    const [state, formAction, isPending] = useActionState(loginAction, null);
+    const [state, formAction] = useFormState(loginAction, null);
 
     // Redirect on success
     if (state?.success) {
@@ -49,7 +66,6 @@ export default function LoginPage() {
                                 type="email"
                                 placeholder="you@example.com"
                                 required
-                                disabled={isPending}
                             />
                         </div>
 
@@ -62,13 +78,11 @@ export default function LoginPage() {
                                     type={showPassword ? 'text' : 'password'}
                                     placeholder="••••••••"
                                     required
-                                    disabled={isPending}
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
                                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                                    disabled={isPending}
                                 >
                                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                                 </button>
@@ -77,7 +91,7 @@ export default function LoginPage() {
 
                         <div className="flex items-center justify-between text-sm">
                             <label className="flex items-center gap-2">
-                                <input type="checkbox" className="rounded border-gray-300" disabled={isPending} />
+                                <input type="checkbox" className="rounded border-gray-300" />
                                 <span className="text-gray-600">Remember me</span>
                             </label>
                             <Link href="/forgot-password" className="text-violet-600 hover:underline">
@@ -87,16 +101,7 @@ export default function LoginPage() {
                     </CardContent>
 
                     <CardFooter className="flex flex-col gap-4">
-                        <Button type="submit" className="w-full" disabled={isPending}>
-                            {isPending ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                    Signing in...
-                                </>
-                            ) : (
-                                'Sign in'
-                            )}
-                        </Button>
+                        <SubmitButton />
 
                         <p className="text-center text-sm text-gray-600">
                             Don't have an account?{' '}
