@@ -122,15 +122,28 @@ export async function POST(request: NextRequest) {
         });
 
         // Set cookie directly on response
-        response.cookies.set({
+        // Use secure: true for production (Cloudflare Pages always uses HTTPS)
+        const cookieOptions = {
             name: SESSION_COOKIE_NAME,
             value: sessionId,
             httpOnly: true,
-            secure: true,
-            sameSite: 'lax',
+            secure: process.env.NODE_ENV === 'production' || true, // Always true in production
+            sameSite: 'lax' as const,
             expires: expiresAt,
             path: '/',
+        };
+
+        console.log('Setting session cookie:', {
+            sessionId: sessionId.substring(0, 10) + '...',
+            expires: expiresAt.toISOString(),
+            secure: cookieOptions.secure,
+            sameSite: cookieOptions.sameSite
         });
+
+        response.cookies.set(cookieOptions);
+
+        console.log('Login successful for user:', user.email);
+        console.log('Session created with ID:', sessionId.substring(0, 10) + '...');
 
         return response;
     } catch (error) {
