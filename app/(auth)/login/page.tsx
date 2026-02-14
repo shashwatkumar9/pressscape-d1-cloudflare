@@ -37,8 +37,9 @@ export default function LoginPage() {
                 throw new Error(data.error || 'Login failed');
             }
 
-            router.push('/buyer/dashboard');
-            router.refresh();
+            // Use window.location for full page reload to ensure cookie is sent
+            // This fixes SameSite cookie issues with client-side navigation
+            window.location.href = '/buyer/dashboard';
         } catch (err) {
             setError(err instanceof Error ? err.message : 'An error occurred');
         } finally {
