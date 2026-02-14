@@ -1,6 +1,7 @@
 export const runtime = 'edge';
 
 import { sql } from '@/lib/db';
+import { initializeDatabaseFromContext } from '@/lib/cloudflare';
 import { validateRequest } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
@@ -40,6 +41,9 @@ interface RecentOrder {
 }
 
 async function getDashboardData(userId: string) {
+    // Initialize database
+    await initializeDatabaseFromContext();
+
     // Order stats by status
     const orderStatsResult = await sql`
         SELECT 
