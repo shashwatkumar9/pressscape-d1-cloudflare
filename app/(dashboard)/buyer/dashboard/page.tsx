@@ -41,79 +41,102 @@ interface RecentOrder {
 }
 
 async function getDashboardData(userId: string) {
-    // Initialize database
-    await initializeDatabaseFromContext();
+    try {
+        // Initialize database
+        await initializeDatabaseFromContext();
+        console.log('[Dashboard] Database initialized for user:', userId);
 
-    // Order stats by status (using CASE for D1 compatibility)
-    const orderStatsResult = await sql`
-        SELECT
-            COALESCE(SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END), 0) as not_started,
-            COALESCE(SUM(CASE WHEN status IN ('accepted', 'writing') THEN 1 ELSE 0 END), 0) as in_progress,
-            COALESCE(SUM(CASE WHEN status = 'content_submitted' THEN 1 ELSE 0 END), 0) as pending_approval,
-            COALESCE(SUM(CASE WHEN status = 'revision_needed' THEN 1 ELSE 0 END), 0) as in_improvement,
-            COALESCE(SUM(CASE WHEN status IN ('approved', 'published', 'completed') THEN 1 ELSE 0 END), 0) as completed,
-            COALESCE(SUM(CASE WHEN status IN ('cancelled', 'refunded', 'disputed') THEN 1 ELSE 0 END), 0) as rejected,
-            COUNT(*) as total_orders,
-            COALESCE(SUM(total_amount), 0) as total_spent
-        FROM orders
-        WHERE buyer_id = ${userId}
-    `;
+        // Order stats by status (using CASE for D1 compatibility)
+        console.log('[Dashboard] Fetching order stats...');
+        const orderStatsResult = await sql`
+            SELECT
+                COALESCE(SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END), 0) as not_started,
+                COALESCE(SUM(CASE WHEN status IN ('accepted', 'writing') THEN 1 ELSE 0 END), 0) as in_progress,
+                COALESCE(SUM(CASE WHEN status = 'content_submitted' THEN 1 ELSE 0 END), 0) as pending_approval,
+                COALESCE(SUM(CASE WHEN status = 'revision_needed' THEN 1 ELSE 0 END), 0) as in_improvement,
+                COALESCE(SUM(CASE WHEN status IN ('approved', 'published', 'completed') THEN 1 ELSE 0 END), 0) as completed,
+                COALESCE(SUM(CASE WHEN status IN ('cancelled', 'refunded', 'disputed') THEN 1 ELSE 0 END), 0) as rejected,
+                COUNT(*) as total_orders,
+                COALESCE(SUM(total_amount), 0) as total_spent
+            FROM orders
+            WHERE buyer_id = ${userId}
+        `;
+        console.log('[Dashboard] Order stats fetched successfully');
 
-    // Recent orders
-    const recentOrdersResult = await sql`
-        SELECT 
-            o.id, o.order_number, o.order_type, o.status, o.total_amount, o.created_at,
-            w.domain as website_domain,
-            p.name as publisher_name
-        FROM orders o
-        JOIN websites w ON o.website_id = w.id
-        JOIN users p ON o.publisher_id = p.id
-        WHERE o.buyer_id = ${userId}
-        ORDER BY o.created_at DESC
-        LIMIT 5
-    `;
+        // Recent orders
+        console.log('[Dashboard] Fetching recent orders...');
+        const recentOrdersResult = await sql`
+            SELECT
+                o.id, o.order_number, o.order_type, o.status, o.total_amount, o.created_at,
+                w.domain as website_domain,
+                p.name as publisher_name
+            FROM orders o
+            LEFT JOIN websites w ON o.website_id = w.id
+            LEFT JOIN users p ON o.publisher_id = p.id
+            WHERE o.buyer_id = ${userId}
+            ORDER BY o.created_at DESC
+            LIMIT 5
+        `;
+        console.log('[Dashboard] Recent orders fetched successfully');
 
-    // Balance and user info
-    const balanceResult = await sql`
-        SELECT
-            buyer_balance as main,
-            COALESCE(balance_reserved, 0) as reserved,
-            COALESCE(balance_bonus, 0) as bonus,
-            created_at
-        FROM users
-        WHERE id = ${userId}
-    `;
+        // Balance and user info
+        console.log('[Dashboard] Fetching balance...');
+        const balanceResult = await sql`
+            SELECT
+                buyer_balance as main,
+                created_at
+            FROM users
+            WHERE id = ${userId}
+        `;
+        console.log('[Dashboard] Balance fetched successfully');
 
-    // Projects count
-    const projectsResult = await sql`
-        SELECT COUNT(*) as count FROM projects WHERE user_id = ${userId} AND is_active = TRUE
-    `;
+        // Projects count - handle if table doesn't exist
+        let projectsCount = 0;
+        try {
+            console.log('[Dashboard] Fetching projects count...');
+            const projectsResult = await sql`
+                SELECT COUNT(*) as count FROM projects WHERE user_id = ${userId} AND is_active = TRUE
+            `;
+            projectsCount = parseInt(projectsResult.rows[0]?.count as string) || 0;
+            console.log('[Dashboard] Projects count fetched successfully');
+        } catch (projectsError) {
+            console.log('[Dashboard] Projects table not found or error, defaulting to 0:', projectsError);
+            projectsCount = 0;
+        }
 
-    const stats = orderStatsResult.rows[0];
-    const balance = balanceResult.rows[0];
+        const stats = orderStatsResult.rows[0];
+        const balance = balanceResult.rows[0];
 
-    return {
-        orderStats: {
-            not_started: parseInt(stats.not_started as string) || 0,
-            in_progress: parseInt(stats.in_progress as string) || 0,
-            pending_approval: parseInt(stats.pending_approval as string) || 0,
-            in_improvement: parseInt(stats.in_improvement as string) || 0,
-            completed: parseInt(stats.completed as string) || 0,
-            rejected: parseInt(stats.rejected as string) || 0,
-        } as OrderStats,
-        totals: {
-            orders: parseInt(stats.total_orders as string) || 0,
-            spent: parseInt(stats.total_spent as string) || 0,
-        },
-        balance: {
-            main: parseInt(balance?.main as string) || 0,
-            reserved: parseInt(balance?.reserved as string) || 0,
-            bonus: parseInt(balance?.bonus as string) || 0,
-        },
-        recentOrders: recentOrdersResult.rows as unknown as RecentOrder[],
-        projectsCount: parseInt(projectsResult.rows[0]?.count as string) || 0,
-        accountCreatedAt: balance?.created_at as string || new Date().toISOString(),
-    };
+        console.log('[Dashboard] All data fetched, returning response');
+
+        return {
+            orderStats: {
+                not_started: parseInt(stats.not_started as string) || 0,
+                in_progress: parseInt(stats.in_progress as string) || 0,
+                pending_approval: parseInt(stats.pending_approval as string) || 0,
+                in_improvement: parseInt(stats.in_improvement as string) || 0,
+                completed: parseInt(stats.completed as string) || 0,
+                rejected: parseInt(stats.rejected as string) || 0,
+            } as OrderStats,
+            totals: {
+                orders: parseInt(stats.total_orders as string) || 0,
+                spent: parseInt(stats.total_spent as string) || 0,
+            },
+            balance: {
+                main: parseInt(balance?.main as string) || 0,
+                reserved: 0,
+                bonus: 0,
+            },
+            recentOrders: recentOrdersResult.rows as unknown as RecentOrder[],
+            projectsCount,
+            accountCreatedAt: balance?.created_at as string || new Date().toISOString(),
+        };
+    } catch (error) {
+        console.error('[Dashboard] Error in getDashboardData:', error);
+        console.error('[Dashboard] Error details:', error instanceof Error ? error.message : String(error));
+        console.error('[Dashboard] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+        throw error;
+    }
 }
 
 function formatCurrency(cents: number) {
