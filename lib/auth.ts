@@ -1,7 +1,6 @@
-import { Lucia } from 'lucia';
-import { sql, intToBool } from '@/lib/db';
 import { cookies } from 'next/headers';
 import { cache } from 'react';
+import { verifyToken } from '@/lib/jwt';
 
 // Types
 interface Session {
@@ -25,135 +24,63 @@ interface ValidateResult {
     session: Session | null;
 }
 
-const SESSION_COOKIE_NAME = 'auth_session';
-const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+const AUTH_COOKIE_NAME = 'auth_token';
 
-// Generate session ID using Web Crypto API
-function generateSessionId(): string {
-    const array = new Uint8Array(32);
-    crypto.getRandomValues(array);
-    return btoa(String.fromCharCode(...array))
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=/g, '');
-}
-
-// Validate session directly without Lucia
+// Validate JWT token
 export const validateRequest = cache(async (): Promise<ValidateResult> => {
     const cookieStore = await cookies();
-    const sessionId = cookieStore.get(SESSION_COOKIE_NAME)?.value ?? null;
+    const token = cookieStore.get(AUTH_COOKIE_NAME)?.value ?? null;
 
-    if (!sessionId) {
+    console.log('[Auth] Validating JWT, cookie found:', !!token);
+
+    if (!token) {
+        console.log('[Auth] No JWT token found');
         return { user: null, session: null };
     }
 
     try {
-        const result = await sql`
-      SELECT 
-        s.id as session_id,
-        s.user_id,
-        s.expires_at,
-        u.id,
-        u.email,
-        u.name,
-        u.is_buyer,
-        u.is_publisher,
-        u.is_affiliate,
-        u.avatar_url
-      FROM sessions s
-      JOIN users u ON s.user_id = u.id
-      WHERE s.id = ${sessionId}
-    `;
+        // Verify JWT token
+        const payload = await verifyToken(token);
 
-        if (result.rows.length === 0) {
-            // Clear invalid session cookie
-            cookieStore.set(SESSION_COOKIE_NAME, '', { maxAge: 0 });
+        if (!payload) {
+            console.log('[Auth] JWT verification failed');
             return { user: null, session: null };
         }
 
-        const row = result.rows[0] as Record<string, unknown>;
-        const expiresAt = new Date(row.expires_at as string);
+        console.log('[Auth] JWT verified for user:', payload.email);
 
-        // Check if session is expired
-        if (expiresAt < new Date()) {
-            await sql`DELETE FROM sessions WHERE id = ${sessionId}`;
-            cookieStore.set(SESSION_COOKIE_NAME, '', { maxAge: 0 });
-            return { user: null, session: null };
-        }
-
-        const session: Session = {
-            id: row.session_id as string,
-            userId: row.user_id as string,
-            expiresAt,
-        };
-
+        // Create user object from JWT payload
         const user: User = {
-            id: row.id as string,
-            email: row.email as string,
-            name: row.name as string,
-            isBuyer: intToBool(row.is_buyer as number),
-            isPublisher: intToBool(row.is_publisher as number),
-            isAffiliate: intToBool(row.is_affiliate as number),
-            avatarUrl: row.avatar_url as string | null,
+            id: payload.userId,
+            email: payload.email,
+            name: payload.name,
+            isBuyer: false, // These will be fetched from DB if needed
+            isPublisher: false,
+            isAffiliate: false,
+            avatarUrl: null,
         };
 
-        // Extend session if it's within 15 days of expiring
-        const extendThreshold = Date.now() + 15 * 24 * 60 * 60 * 1000;
-        if (expiresAt.getTime() < extendThreshold) {
-            const newExpiresAt = new Date(Date.now() + SESSION_DURATION_MS);
-            await sql`UPDATE sessions SET expires_at = ${newExpiresAt.toISOString()} WHERE id = ${sessionId}`;
-        }
+        // Create session object from JWT
+        const session: Session = {
+            id: token.substring(0, 16),
+            userId: payload.userId,
+            expiresAt: new Date(payload.exp * 1000),
+        };
 
         return { user, session };
     } catch (error) {
-        console.error('Session validation error:', error);
+        console.error('JWT validation error:', error);
         return { user: null, session: null };
     }
 });
 
-// Create session
-export async function createSession(userId: string): Promise<Session> {
-    const sessionId = generateSessionId();
-    const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
-
-    await sql`
-    INSERT INTO sessions (id, user_id, expires_at)
-    VALUES (${sessionId}, ${userId}, ${expiresAt.toISOString()})
-  `;
-
-    const session: Session = {
-        id: sessionId,
-        userId,
-        expiresAt,
-    };
-
-    // Set cookie
-    const cookieStore = await cookies();
-    cookieStore.set(SESSION_COOKIE_NAME, sessionId, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        expires: expiresAt,
-        path: '/',
-    });
-
-    return session;
-}
-
-// Invalidate session
+// Invalidate session (clear JWT cookie)
 export async function invalidateSession(): Promise<void> {
-    const { session } = await validateRequest();
-    if (!session) {
-        return;
-    }
-
-    await sql`DELETE FROM sessions WHERE id = ${session.id}`;
-
     const cookieStore = await cookies();
-    cookieStore.set(SESSION_COOKIE_NAME, '', { maxAge: 0, path: '/' });
+    cookieStore.set(AUTH_COOKIE_NAME, '', { maxAge: 0, path: '/' });
 }
 
-// Re-export for backwards compatibility (not using lucia anymore)
+// Re-export for backwards compatibility
 export const lucia = {
-    sessionCookieName: SESSION_COOKIE_NAME,
+    sessionCookieName: AUTH_COOKIE_NAME,
 };

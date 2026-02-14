@@ -2,24 +2,10 @@
 
 export const runtime = 'edge';
 
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
 import { sql } from '@/lib/db';
 import { initializeDatabaseFromContext } from '@/lib/cloudflare';
 import { verifyPassword } from '@/lib/password';
-
-const SESSION_COOKIE_NAME = 'auth_session';
-const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-
-// Generate session ID using Web Crypto API
-function generateSessionId(): string {
-    const array = new Uint8Array(32);
-    crypto.getRandomValues(array);
-    return btoa(String.fromCharCode(...array))
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=/g, '');
-}
+import { createToken } from '@/lib/jwt';
 
 export async function loginAction(prevState: any, formData: FormData) {
     try {
@@ -67,31 +53,21 @@ export async function loginAction(prevState: any, formData: FormData) {
         // Update last login
         await sql`UPDATE users SET last_login_at = ${now} WHERE id = ${user.id as string}`;
 
-        // Generate session ID
-        const sessionId = generateSessionId();
-        const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
-
-        // Insert session into database
-        await sql`
-            INSERT INTO sessions (id, user_id, expires_at)
-            VALUES (${sessionId}, ${user.id as string}, ${expiresAt.toISOString()})
-        `;
-
-        // Set cookie using Next.js cookies() API
-        const cookieStore = await cookies();
-        cookieStore.set(SESSION_COOKIE_NAME, sessionId, {
-            httpOnly: true,
-            secure: true,
-            sameSite: 'lax',
-            maxAge: 30 * 24 * 60 * 60, // 30 days in seconds
-            path: '/',
-        });
+        // Create JWT token
+        const token = await createToken(
+            user.id as string,
+            user.email as string,
+            user.name as string
+        );
 
         console.log('Login successful for user:', email);
-        console.log('Session created with ID:', sessionId.substring(0, 10) + '...');
+        console.log('JWT token created');
 
-        // Success - redirect will happen on client
-        return { success: true };
+        // Return token to client
+        return {
+            success: true,
+            token
+        };
 
     } catch (error) {
         console.error('Login error:', error);

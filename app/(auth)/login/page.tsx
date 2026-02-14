@@ -32,8 +32,11 @@ export default function LoginPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [state, formAction] = useFormState(loginAction, null);
 
-    // Redirect on success
-    if (state?.success) {
+    // Redirect on success and store JWT token
+    if (state?.success && state?.token) {
+        // Store JWT in cookie (client-side)
+        document.cookie = `auth_token=${state.token}; path=/; max-age=${30 * 24 * 60 * 60}; SameSite=Lax; Secure`;
+        console.log('JWT token stored in cookie');
         window.location.href = '/buyer/dashboard';
     }
 
