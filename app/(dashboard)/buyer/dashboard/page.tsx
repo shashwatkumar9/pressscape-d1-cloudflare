@@ -1,7 +1,8 @@
 export const runtime = 'edge';
 
 import { sql } from '@/lib/db';
-import { cookies } from 'next/headers';
+import { validateRequest } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,19 +18,6 @@ import {
     Clock,
     ExternalLink,
 } from 'lucide-react';
-
-async function getSession() {
-    const cookieStore = await cookies();
-    const sessionId = cookieStore.get('auth_session')?.value;
-    if (!sessionId) return null;
-
-    const result = await sql`
-        SELECT s.*, u.* FROM sessions s
-        JOIN users u ON s.user_id = u.id
-        WHERE s.id = ${sessionId} AND s.expires_at > NOW()
-    `;
-    return result.rows[0] || null;
-}
 
 interface OrderStats {
     not_started: number;
@@ -81,12 +69,13 @@ async function getDashboardData(userId: string) {
         LIMIT 5
     `;
 
-    // Balance
+    // Balance and user info
     const balanceResult = await sql`
-        SELECT 
+        SELECT
             buyer_balance as main,
             COALESCE(balance_reserved, 0) as reserved,
-            COALESCE(balance_bonus, 0) as bonus
+            COALESCE(balance_bonus, 0) as bonus,
+            created_at
         FROM users
         WHERE id = ${userId}
     `;
@@ -119,6 +108,7 @@ async function getDashboardData(userId: string) {
         },
         recentOrders: recentOrdersResult.rows as unknown as RecentOrder[],
         projectsCount: parseInt(projectsResult.rows[0]?.count as string) || 0,
+        accountCreatedAt: balance?.created_at as string || new Date().toISOString(),
     };
 }
 
@@ -143,21 +133,14 @@ const statusColors: Record<string, string> = {
 };
 
 export default async function BuyerDashboard() {
-    const session = await getSession();
+    const { user } = await validateRequest();
 
-    if (!session) {
-        return (
-            <div className="text-center py-12">
-                <p className="text-gray-600">Please log in to view your dashboard.</p>
-                <Link href="/login">
-                    <Button className="mt-4">Login</Button>
-                </Link>
-            </div>
-        );
+    if (!user) {
+        redirect('/login');
     }
 
-    const data = await getDashboardData(session.user_id as string);
-    const userName = (session.name as string)?.split(' ')[0] || 'there';
+    const data = await getDashboardData(user.id);
+    const userName = user.name?.split(' ')[0] || 'there';
 
     return (
         <div className="space-y-6">
@@ -189,7 +172,7 @@ export default async function BuyerDashboard() {
             </div>
 
             {/* Tutorial Section (for new users) */}
-            <TutorialSection accountCreatedAt={session.created_at as string} />
+            <TutorialSection accountCreatedAt={data.accountCreatedAt} />
 
             {/* Stats & Recent Activity Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
