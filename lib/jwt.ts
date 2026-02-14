@@ -23,7 +23,14 @@ function base64UrlDecode(data: string): string {
 
 // Generate JWT secret key from environment variable
 async function getSecretKey(): Promise<CryptoKey> {
-    const secret = process.env.JWT_SECRET || 'default-secret-change-in-production';
+    const secret = process.env.JWT_SECRET;
+    console.log('[JWT] JWT_SECRET exists:', !!secret);
+
+    if (!secret) {
+        console.error('[JWT] JWT_SECRET environment variable is not set!');
+        throw new Error('JWT_SECRET environment variable is not set');
+    }
+
     const encoder = new TextEncoder();
     const keyData = encoder.encode(secret);
 
@@ -38,33 +45,45 @@ async function getSecretKey(): Promise<CryptoKey> {
 
 // Create JWT token
 export async function createToken(userId: string, email: string, name: string): Promise<string> {
-    const header = {
-        alg: 'HS256',
-        typ: 'JWT'
-    };
+    try {
+        console.log('[JWT] Creating token for user:', userId);
 
-    const payload: JWTPayload = {
-        userId,
-        email,
-        name,
-        iat: Math.floor(Date.now() / 1000),
-        exp: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60) // 30 days
-    };
+        const header = {
+            alg: 'HS256',
+            typ: 'JWT'
+        };
 
-    const encodedHeader = base64UrlEncode(JSON.stringify(header));
-    const encodedPayload = base64UrlEncode(JSON.stringify(payload));
-    const message = `${encodedHeader}.${encodedPayload}`;
+        const payload: JWTPayload = {
+            userId,
+            email,
+            name,
+            iat: Math.floor(Date.now() / 1000),
+            exp: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60) // 30 days
+        };
 
-    const key = await getSecretKey();
-    const encoder = new TextEncoder();
-    const data = encoder.encode(message);
-    const signature = await crypto.subtle.sign('HMAC', key, data);
+        const encodedHeader = base64UrlEncode(JSON.stringify(header));
+        const encodedPayload = base64UrlEncode(JSON.stringify(payload));
+        const message = `${encodedHeader}.${encodedPayload}`;
 
-    const encodedSignature = base64UrlEncode(
-        String.fromCharCode(...new Uint8Array(signature))
-    );
+        console.log('[JWT] Getting secret key');
+        const key = await getSecretKey();
 
-    return `${message}.${encodedSignature}`;
+        console.log('[JWT] Signing token');
+        const encoder = new TextEncoder();
+        const data = encoder.encode(message);
+        const signature = await crypto.subtle.sign('HMAC', key, data);
+
+        const encodedSignature = base64UrlEncode(
+            String.fromCharCode(...new Uint8Array(signature))
+        );
+
+        console.log('[JWT] Token created successfully');
+        return `${message}.${encodedSignature}`;
+    } catch (error) {
+        console.error('[JWT] Error creating token:', error);
+        console.error('[JWT] Error details:', error instanceof Error ? error.message : String(error));
+        throw error;
+    }
 }
 
 // Verify and decode JWT token

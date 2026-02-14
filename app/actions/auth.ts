@@ -7,6 +7,8 @@ import { createToken } from '@/lib/jwt';
 
 export async function loginAction(prevState: any, formData: FormData) {
     try {
+        console.log('[Login] Starting login action');
+
         // Initialize D1 database
         await initializeDatabaseFromContext();
         const now = new Date().toISOString();
@@ -14,7 +16,10 @@ export async function loginAction(prevState: any, formData: FormData) {
         const email = formData.get('email') as string;
         const password = formData.get('password') as string;
 
+        console.log('[Login] Email:', email);
+
         if (!email || !password) {
+            console.log('[Login] Missing credentials');
             return { error: 'Email and password are required' };
         }
 
@@ -52,14 +57,15 @@ export async function loginAction(prevState: any, formData: FormData) {
         await sql`UPDATE users SET last_login_at = ${now} WHERE id = ${user.id as string}`;
 
         // Create JWT token
+        console.log('[Login] Creating JWT token for user:', user.id);
         const token = await createToken(
             user.id as string,
             user.email as string,
             user.name as string
         );
 
-        console.log('Login successful for user:', email);
-        console.log('JWT token created');
+        console.log('[Login] JWT token created successfully');
+        console.log('[Login] Login successful for user:', email);
 
         // Return token to client
         return {
@@ -68,7 +74,12 @@ export async function loginAction(prevState: any, formData: FormData) {
         };
 
     } catch (error) {
-        console.error('Login error:', error);
-        return { error: 'An error occurred during login' };
+        console.error('[Login] Error occurred:', error);
+        console.error('[Login] Error message:', error instanceof Error ? error.message : String(error));
+        console.error('[Login] Error stack:', error instanceof Error ? error.stack : 'No stack');
+        return {
+            error: 'An error occurred during login',
+            details: error instanceof Error ? error.message : String(error)
+        };
     }
 }
